@@ -5,9 +5,22 @@ import os
 from PIL import Image
 import pytesseract
 import fitz
+import shutil
 
-# Tesseract path
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# ==========================================
+# CROSS-PLATFORM TESSERACT CONFIGURATION
+# ==========================================
+# 1. First, check if running on Streamlit Cloud (Linux)
+linux_tesseract_path = '/usr/bin/tesseract'
+dynamic_path = shutil.which("tesseract")
+
+if os.path.exists(linux_tesseract_path):
+    pytesseract.pytesseract.tesseract_cmd = linux_tesseract_path
+elif dynamic_path:
+    pytesseract.pytesseract.tesseract_cmd = dynamic_path
+else:
+    # 2. Fallback to your local Windows path if running locally
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # Setup
 load_dotenv()
@@ -68,7 +81,12 @@ with col1:
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Document", use_container_width=True)
             with st.spinner("Photo se text nikal raha hai..."):
-                st.session_state.extracted_text = pytesseract.image_to_string(image)
+                try:
+                    st.session_state.extracted_text = pytesseract.image_to_string(image)
+                except Exception as e:
+                    st.error(f"OCR Error: {e}")
+                    st.info("Make sure you have added packages.txt to your GitHub repo and redeployed.")
+            
             if st.session_state.extracted_text.strip():
                 st.success("Text extract ho gaya!")
             else:
